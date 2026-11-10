@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Dispensa">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Dispensa</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#fff; --ink:#1b1d1c; --mut:#6b706d; --line:#e4e2dc;
+  --acc:#1f6f4a; --acc2:#e7f2ec; --warn:#b4540a; --warn2:#fdf0e3; --bad:#b3261e; --bad2:#fbe9e7;
+  --r:14px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121413; --card:#1c1f1d; --ink:#ecefed; --mut:#9aa19d; --line:#2c302e;
+  --acc:#4cc18a; --acc2:#1d3328; --warn:#f0a35c; --warn2:#3a2a1a; --bad:#f2827a; --bad2:#3a1f1d;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.hidden{display:none!important}
+
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(var(--safe-t) + 10px) 14px 8px}
+.top{display:flex;align-items:center;gap:10px}
+.top h1{font-size:22px;margin:0;flex:1;letter-spacing:-.3px}
+.sync{font-size:12px;color:var(--mut)}
+.sync.err{color:var(--bad)}
+.ibtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:20px}
+.ibtn:active{background:var(--line)}
+.search{margin-top:8px;width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);outline:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:14px;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{opacity:.6;margin-left:4px}
+
+main{padding:4px 12px calc(110px + var(--safe-b))}
+.row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 8px 8px 10px;margin-bottom:6px}
+.row.zero{opacity:.55}
+.thumb{width:42px;height:42px;border-radius:10px;flex:none;background:var(--acc2);color:var(--acc);display:grid;place-items:center;font-weight:700;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.info{flex:1;min-width:0}
+.name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:13px;color:var(--mut);display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.tag{font-size:12px;padding:1px 7px;border-radius:6px;background:var(--line);color:var(--ink)}
+.tag.w{background:var(--warn2);color:var(--warn)}
+.tag.b{background:var(--bad2);color:var(--bad)}
+.tag.g{background:var(--acc2);color:var(--acc)}
+.qty{display:flex;align-items:center;gap:2px;flex:none}
+.qb{width:38px;height:38px;border-radius:10px;background:var(--bg);font-size:22px;font-weight:600;line-height:1}
+.qb:active{background:var(--line)}
+.qv{min-width:30px;text-align:center;font-weight:700;font-size:17px}
+.empty{text-align:center;color:var(--mut);padding:40px 20px}
+.sec{font-size:13px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin:14px 4px 6px}
+
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:6px 10px calc(6px + var(--safe-b))}
+.tab{flex:1;padding:6px;font-size:12px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tab b{font-size:20px;font-weight:400}
+.tab.on{color:var(--acc);font-weight:600}
+.fab{width:64px;height:64px;border-radius:20px;background:var(--acc);color:#fff;font-size:28px;margin-top:-30px;box-shadow:0 6px 18px rgba(0,0,0,.2);flex:none}
+.badge{background:var(--bad);color:#fff;border-radius:99px;font-size:11px;padding:0 6px;margin-left:2px}
+
+/* sheets */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end}
+.sheet{width:100%;max-height:92vh;overflow:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:14px 16px calc(18px + var(--safe-b))}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+.sh-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.sh-h h2{margin:0;font-size:19px;flex:1}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 2px 4px}
+.in{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);outline:none}
+.in:focus{border-color:var(--acc)}
+.in.miss{border-color:var(--warn);background:var(--warn2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--mut);margin:4px 2px 0}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+.step button{width:44px;height:44px;font-size:22px}
+.step input{flex:1;width:100%;text-align:center;border:0;background:none;font-weight:700;font-size:17px;outline:none}
+.btn{width:100%;padding:14px;border-radius:14px;background:var(--acc);color:#fff;font-weight:600;font-size:16px;margin-top:14px}
+.btn.sec2{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.del{background:none;color:var(--bad);margin-top:6px}
+details{margin-top:12px}
+summary{color:var(--acc);font-size:14px;font-weight:600;padding:4px 2px}
+
+.det-top{display:flex;gap:12px;align-items:center}
+.det-top .thumb{width:72px;height:72px;font-size:26px;border-radius:14px}
+.big{display:flex;align-items:center;justify-content:center;gap:18px;margin:18px 0 6px}
+.big .qb{width:64px;height:64px;font-size:30px;border-radius:18px;background:var(--card);border:1px solid var(--line)}
+.big .qv{font-size:40px;min-width:70px}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.fact{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:14px}
+.fact span{display:block;font-size:12px;color:var(--mut)}
+
+/* scanner */
+#scan{position:fixed;inset:0;z-index:30;background:#000;color:#fff;display:flex;flex-direction:column}
+#scan .bar{padding:calc(var(--safe-t) + 10px) 12px 10px;display:flex;align-items:center;gap:8px}
+.seg{flex:1;display:flex;background:#222;border-radius:12px;padding:3px}
+.seg button{flex:1;padding:9px 4px;border-radius:9px;color:#bbb;font-size:14px;font-weight:600}
+.seg button.on{background:#fff;color:#000}
+.seg button.on.out{background:#f2827a}
+.seg button.on.inn{background:#4cc18a}
+#reader{flex:1;width:100%;overflow:hidden}
+#reader video{object-fit:cover}
+#scan .foot{padding:10px 12px calc(14px + var(--safe-b));display:flex;gap:8px}
+#scan .foot input{flex:1;padding:12px;border-radius:12px;border:0;background:#222;color:#fff;outline:none}
+#scan .foot button{padding:0 16px;border-radius:12px;background:#333;color:#fff}
+#scan .msg{text-align:center;font-size:16px;font-weight:700;color:#ccc;padding:6px 12px;min-height:30px}
+#scan .msg.in{color:#4cc18a}
+#scan .msg.out{color:#f2827a}
+#scan .msg.warn{color:#f0a35c}
+#scan .msg.dup{color:#9aa19d}
+/* pannello Scadenza? (R1.9): nello scanner è assoluto sopra .foot, fuori dal flusso flex; altrove è #lotbar fisso */
+#lotpanel,#lotbar{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+#lotpanel{position:absolute;left:10px;right:10px;bottom:calc(84px + var(--safe-b));z-index:6}
+#lotbar{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--safe-b));z-index:45}
+.lp-h{font-size:14px;margin-bottom:8px}
+.lp-r{display:flex;gap:6px;flex-wrap:wrap}
+.lp-b{padding:9px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--ink)}
+.lp-b:active{background:var(--line)}
+.lp-pick{position:relative;overflow:hidden;display:inline-block;margin:0}
+.lp-date{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.lot{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 8px;margin-bottom:6px}
+.lot-d{flex:1;font-size:15px}
+.lot-ed{position:relative;overflow:hidden;width:38px;height:38px;border-radius:10px;background:var(--bg);display:grid;place-items:center;margin:0;font-size:18px}
+.lot-ed input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.scan-sync{font-size:13px;color:#ccc;min-width:48px;text-align:right;white-space:nowrap}
+#flash{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;display:grid;place-items:center;font-size:96px;font-weight:700;color:rgba(255,255,255,.95)}
+#flash.go{animation:flashgo .35s ease-out}
+#flash.in{background:rgba(76,193,138,.55)}
+#flash.out{background:rgba(242,130,122,.55)}
+#flash.warn{background:rgba(240,163,92,.55)}
+#flash.dup{background:rgba(154,161,157,.55)}
+#flash.in::after{content:'＋'}
+#flash.out::after{content:'−'}
+#flash.warn::after{content:'!'}
+#flash.dup::after{content:'⟲'}
+@keyframes flashgo{0%{opacity:1}100%{opacity:0}}
+@keyframes flashfade{0%{opacity:1}100%{opacity:0}}
+@keyframes plin{0%{background:var(--acc2)}100%{background:var(--card)}}
+@keyframes plout{0%{background:var(--bad2)}100%{background:var(--card)}}
+@keyframes qvjump{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.row.pl-in{animation:plin .3s ease-out}
+.row.pl-out{animation:plout .3s ease-out}
+.row.pl-in .qv,.row.pl-out .qv,.qv.jump{animation:qvjump .3s ease-out}
+@media (prefers-reduced-motion:reduce){
+  #flash.go{animation:flashfade .25s linear}
+  #flash.in{background:transparent;box-shadow:inset 0 0 0 10px #4cc18a}
+  #flash.out{background:transparent;box-shadow:inset 0 0 0 10px #f2827a}
+  #flash.warn{background:transparent;box-shadow:inset 0 0 0 10px #f0a35c}
+  #flash.dup{background:transparent;box-shadow:inset 0 0 0 10px #9aa19d}
+  #flash::after{content:''!important}
+  .row.pl-in,.row.pl-out{animation:none;background:var(--acc2)}
+  .row.pl-in .qv,.row.pl-out .qv,.qv.jump{animation:none}
+}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--safe-b));z-index:50;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:15px;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+.list-chk{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:6px}
+.list-chk input{width:22px;height:22px;accent-color:var(--acc)}
+.list-chk.done .name{text-decoration:line-through;opacity:.5}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup" class="hidden" style="padding:calc(var(--safe-t) + 30px) 20px 20px;max-width:520px;margin:auto">
+  <h1 style="margin:0 0 6px">🥫 Dispensa</h1>
+  <p style="color:var(--mut);margin-top:0">Prima configurazione (una volta per telefono).</p>
+  <label>Il tuo nome</label>
+  <input class="in" id="su-user" placeholder="Mario">
+  <label>Link di configurazione <i>oppure</i> URL Apps Script</label>
+  <textarea class="in" id="su-url" rows="3" placeholder="https://script.google.com/macros/s/…/exec"></textarea>
+  <label>Token</label>
+  <input class="in" id="su-token" placeholder="token segreto">
+  <p class="hint">Se incolli il link di configurazione completo, URL e token si compilano da soli.</p>
+  <button class="btn" id="su-go">Collega</button>
+  <button class="btn sec2" id="su-local">Prova senza cloud (solo questo telefono)</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <div class="top">
+      <h1 id="title">Dispensa</h1>
+      <span class="sync" id="sync"></span>
+      <button class="ibtn" id="b-add" title="Aggiungi a mano">＋</button>
+      <button class="ibtn" id="b-set" title="Impostazioni">⚙︎</button>
+    </div>
+    <div id="hdr-inv">
+      <input class="search" id="q" type="search" placeholder="Cerca prodotto, marca, categoria…" autocomplete="off">
+      <div class="chips" id="chips"></div>
+    </div>
+  </header>
+  <main id="main"></main>
+  <nav>
+    <button class="tab on" data-tab="inv"><b>☰</b>Dispensa</button>
+    <button class="fab" id="b-scan" aria-label="Scansiona">▥</button>
+    <button class="tab" data-tab="shop"><b>🛒</b><span>Spesa<span id="shopN"></span></span></button>
+  </nav>
+</div>
+
+<!-- SCANNER -->
+<div id="scan" class="hidden">
+  <div class="bar">
+    <div class="seg" id="mode">
+      <button data-m="out">− Usa</button>
+      <button data-m="ask">Chiedi</button>
+      <button data-m="in">+ Carica</button>
+    </div>
+    <span class="scan-sync" id="scan-sync"></span>
+    <button class="ibtn" id="scan-x" style="color:#fff">✕</button>
+  </div>
+  <div id="reader"></div>
+  <div id="flash"></div>
+  <div class="msg" id="scan-msg" aria-live="polite">Inquadra il codice a barre</div>
+  <div id="lotpanel" class="hidden"></div>
+  <div class="foot">
+    <input id="scan-man" inputmode="numeric" placeholder="…o digita il codice">
+    <button id="scan-go">OK</button>
+  </div>
+</div>
+
+<div id="sheet-root"></div>
+<div id="lotbar" class="hidden"></div>
+<div id="toast"></div>
+
+<script>
+/* ================= CONFIG / STATO ================= */
+const VERSION = '1.2.0';
+const LS = {cfg:'disp.cfg', items:'disp.items', extras:'disp.extras', pend:'disp.pend', mode:'disp.mode', srv:'disp.srv', lastExp:'disp.lastExp'};
+const DEF_POS = ['Dispensa','Frigo','Freezer','Cantina'];
+const DEF_CAT = ['Pasta e riso','Conserve','Sughi e condimenti','Colazione','Snack e dolci','Bevande',
+  'Latticini','Carne e pesce','Frutta e verdura','Surgelati','Bimbi','Casa e pulizia','Altro'];
+const SOON_DAYS = 7;
+
+// BEGIN lots.js
+/* Riferimento per la rev. 1.2: logica pura dei lotti, identica lato app e lato Code.gs.
+   Lotto = { d: 'YYYY-MM-DD' | '', q: intero > 0 }. d vuoto = senza data. */
+
+// Data valida solo se YYYY-MM-DD, altrimenti 'senza data'.
+const isoOrEmpty = d => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? String(d) : '');
+const cmp = (a, b) => (a.d === b.d ? 0 : a.d === '' ? 1 : b.d === '' ? -1 : a.d < b.d ? -1 : 1);
+const sorted = lots => lots.slice().sort(cmp);
+const total = lots => lots.reduce((s, l) => s + l.q, 0);
+
+function parseLots(raw) {
+  if (!raw) return [];
+  try {
+    const a = JSON.parse(raw);
+    if (!Array.isArray(a)) return [];
+    return a.filter(l => l && Number(l.q) > 0).map(l => ({ d: isoOrEmpty(l.d), q: Math.floor(Number(l.q)) }));
+  } catch (e) { return []; }
+}
+const serializeLots = lots => (lots.length ? JSON.stringify(sorted(lots).map(l => ({ d: l.d, q: l.q }))) : '');
+
+function addToLot(lots, d, n) {
+  d = isoOrEmpty(d);
+  const out = lots.map(l => ({ ...l }));
+  const f = out.find(l => l.d === d);
+  if (f) f.q += n; else out.push({ d, q: n });
+  return sorted(out);
+}
+function consumeFefo(lots, n) {
+  const out = []; const taken = []; let left = n;
+  for (const l of sorted(lots)) {
+    if (left <= 0) { out.push({ ...l }); continue; }
+    const t = Math.min(l.q, left); left -= t; taken.push({ d: l.d, q: t });
+    if (l.q > t) out.push({ d: l.d, q: l.q - t });
+  }
+  return { lots: out, taken };
+}
+// Consumo da un lotto preciso; se non basta (o non esiste) il resto va in FEFO. Il totale scalato è sempre n.
+function consumeFromLot(lots, d, n) {
+  d = isoOrEmpty(d);
+  const f = lots.find(l => l.d === d);
+  const t = Math.min(n, f ? f.q : 0);
+  const rest = lots.map(l => (l.d === d ? { d: l.d, q: l.q - t } : { ...l })).filter(l => l.q > 0);
+  const taken = t ? [{ d, q: t }] : [];
+  if (n - t <= 0) return { lots: sorted(rest), taken };
+  const r = consumeFefo(rest, n - t);
+  return { lots: r.lots, taken: taken.concat(r.taken) };
+}
+function moveUnits(lots, from, to, n) {
+  from = isoOrEmpty(from);
+  const f = lots.find(l => l.d === from);
+  const t = Math.min(n, f ? f.q : 0);
+  if (!t) return lots.map(l => ({ ...l }));
+  const rest = lots.map(l => (l.d === from ? { d: l.d, q: l.q - t } : { ...l })).filter(l => l.q > 0);
+  return addToLot(rest, to, t);
+}
+function reconcile(lots, qty) {
+  const s = total(lots);
+  if (s < qty) return addToLot(lots, '', qty - s);
+  if (s > qty) return consumeFefo(lots, s - qty).lots;
+  return sorted(lots);
+}
+// Lotti effettivi di un prodotto tracciato. Non scrive nulla: lotti virtuale se la colonna è vuota.
+function effectiveLots(item) {
+  const own = parseLots(item.lotti);
+  if (own.length) return reconcile(own, item.qty);
+  return item.qty > 0 ? [{ d: item.scadenza || '', q: item.qty }] : [];
+}
+const nextExpiry = lots => (sorted(lots).find(l => l.d !== '') || { d: '' }).d;
+
+// Operazione delta su prodotto tracciato. Restituisce una copia del prodotto con lotti, qty, scadenza coerenti.
+function applyDelta(item, delta, lotDate) {
+  let lots = effectiveLots(item); let taken = [];
+  const qty = Math.max(0, item.qty + delta);
+  if (delta > 0) lots = addToLot(lots, lotDate || '', delta);
+  else if (delta < 0) {
+    const n = Math.min(-delta, item.qty);
+    const r = lotDate ? consumeFromLot(lots, lotDate, n) : consumeFefo(lots, n);
+    lots = r.lots; taken = r.taken;
+  }
+  return { item: { ...item, qty, lotti: serializeLots(lots), scadenza: nextExpiry(lots) }, taken };
+}
+// END lots.js
+
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch(e){ return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+
+let cfg = load(LS.cfg, null);
+let items = load(LS.items, []);
+let pending = load(LS.pend, []);
+let extras = load(LS.extras, []);
+let tab = 'inv', filter = 'all', query = '';
+let syncing = false, syncErr = '', retryT = 0, scanOpen = false;
+let srv = load(LS.srv, {version: '', config: null});   // ultima versione/config noti del backend
+let lastExp = load(LS.lastExp, {});                     // id prodotto → ultima data scelta (max 200)
+let inherit = null, lp = null, pickerOpen = false;      // lotto ereditato {id,d,at}; pannello Scadenza? {id,n,host,sheet,t}
+const QUICK_DAYS = [7, 30], LP_MS = 8000, INHERIT_MS = 90000, LASTEXP_MAX = 200;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const positions = () => cfg?.pos?.length ? cfg.pos : DEF_POS;
+
+/* ================= SETUP ================= */
+function parseSetupLink(txt){
+  // accetta: link app con #u=...&t=...  oppure URL /exec puro
+  try {
+    const h = txt.includes('#') ? txt.split('#')[1] : '';
+    if (h) { const p = new URLSearchParams(h); if (p.get('u')) return {url:p.get('u'), token:p.get('t')||''}; }
+  } catch(e){}
+  return {url: txt.trim(), token: null};
+}
+function initSetup(){
+  // link di configurazione aperto direttamente
+  if (location.hash.includes('u=')) {
+    const p = parseSetupLink(location.href);
+    $('#su-url').value = p.url; $('#su-token').value = p.token || '';
+    history.replaceState(null, '', location.pathname);
+  }
+  $('#su-url').addEventListener('input', e => {
+    const p = parseSetupLink(e.target.value);
+    if (p.token !== null) { $('#su-url').value = p.url; $('#su-token').value = p.token; }
+  });
+  $('#su-go').onclick = async () => {
+    const c = {user: $('#su-user').value.trim() || 'Io', url: $('#su-url').value.trim(), token: $('#su-token').value.trim(), pos: DEF_POS};
+    if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(c.url)) return toast('URL Apps Script non valido (deve finire con /exec)');
+    $('#su-go').textContent = 'Collegamento…';
+    try {
+      const r = await apiGet(c);
+      if (!r.ok) throw new Error(r.error === 'token' ? 'Token errato' : r.error);
+      noteSrv(r); cfg = c; save(LS.cfg, cfg); items = r.items; save(LS.items, items);
+      start();
+    } catch(e) { toast('Errore: ' + e.message); $('#su-go').textContent = 'Collega'; }
+  };
+  $('#su-local').onclick = () => { cfg = {user: $('#su-user').value.trim() || 'Io', url:'', token:'', pos: DEF_POS}; save(LS.cfg, cfg); start(); };
+  $('#setup').classList.remove('hidden');
+}
+
+/* ================= BACKEND ================= */
+// fetch con timeout (Q2): senza risposta entro `ms` la richiesta viene annullata (AbortError)
+async function fetchJson(url, opts, ms = 45000){
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, Object.assign({}, opts, {signal: ctl.signal})); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+const apiGet = (c = cfg) => fetchJson(c.url + '?token=' + encodeURIComponent(c.token) + '&_=' + Date.now());
+// text/plain evita il preflight CORS con Apps Script
+const apiPost = ops => fetchJson(cfg.url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({token: cfg.token, ops})});
+// confronto di versioni per componenti numerici: '1.10' > '1.2', '1.2.0' = '1.2'
+function cmpVersion(a, b){
+  const x = String(a || '').split('.').map(Number), y = String(b || '').split('.').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d < 0 ? -1 : 1; }
+  return 0;
+}
+function noteSrv(r){ srv = {version: String(r.version || ''), config: r.config || null}; save(LS.srv, srv); }
+function queue(op){
+  op.user = cfg.user; op.opId = uid();   // opId: il backend scarta i rinvii di una richiesta persa (Q7)
+  if (cfg.url) { pending.push(op); save(LS.pend, pending); }
+  save(LS.items, items); save(LS.extras, extras);
+  render();
+  Promise.resolve().then(sync);          // più operazioni nello stesso istante partono in una sola richiesta
+}
+async function sync(){
+  clearTimeout(retryT);
+  if (!cfg.url) { updateSync(); return; }
+  if (syncing) { sync.again = true; return; }
+  syncing = true; updateSync();
+  try {
+    const batch = pending.slice();
+    const r = batch.length ? await apiPost(batch) : await apiGet();
+    if (!r.ok) throw new Error(r.error);
+    pending = pending.slice(batch.length); save(LS.pend, pending);
+    // con operazioni ancora in coda (es. un cfgSet) la config locale vale più di quella appena letta
+    noteSrv(pending.length ? Object.assign({}, r, {config: srv.config || r.config}) : r);
+    if (!pending.length) { items = r.items; extras = r.extras || []; save(LS.items, items); save(LS.extras, extras); }
+    syncErr = '';
+  } catch(e) {
+    syncErr = e.name === 'AbortError' ? 'timeout' : (e.message || 'offline');
+  } finally { syncing = false; }
+  updateSync(); render();
+  if (syncErr && pending.length) retryT = setTimeout(() => { if (!document.hidden) sync(); }, 30000);
+  if (sync.again) { sync.again = false; sync(); }
+}
+// ✓ tutto inviato · ⟳ in invio · · N in coda · ⚠︎ N errore · offline · N senza rete
+function syncLabel({syncing, pending, err, online}){
+  if (!online) return `offline · ${pending}`;
+  if (syncing) return '⟳';
+  if (err) return `⚠︎ ${pending}`;
+  return pending > 0 ? `· ${pending}` : '✓';
+}
+function updateSync(){
+  const n = pending.length, online = navigator.onLine !== false;
+  const l = syncLabel({syncing, pending: n, err: syncErr, online});
+  $('#scan-sync').textContent = l;
+  const s = $('#sync'), bad = !!syncErr && online && !syncing;
+  s.textContent = bad ? `⚠︎ ${n || ''} non sincr.` : (l === '✓' ? '' : l); s.classList.toggle('err', bad);
+}
+
+/* ================= LOGICA ================= */
+function daysTo(d){
+  if (!d) return null;
+  const t = new Date(d + 'T00:00:00'); const n = new Date(); n.setHours(0,0,0,0);
+  return Math.round((t - n) / 864e5);
+}
+// R1.15: funzioni dei lotti solo con backend >= 1.2 (confronto numerico) E oggetto config; catScad vuoto non le spegne
+const lotsEnabled = () => cmpVersion(srv.version, '1.2') >= 0 && !!srv.config;
+const isTracked = it => lotsEnabled() && Array.isArray(srv.config.catScad) && srv.config.catScad.includes(it.categoria);
+// R1.13: prossima scadenza (tra i lotti effettivi se la categoria è attiva, altrimenti il campo scadenza)
+const expiry = it => isTracked(it) ? nextExpiry(effectiveLots(it)) : (it.scadenza || '');
+function expTag(it){
+  const e = expiry(it), d = daysTo(e); if (d === null || it.qty <= 0) return '';
+  let x = '';
+  if (isTracked(it)) { const lots = effectiveLots(it), f = sorted(lots).find(l => l.d); if (f && f.q < total(lots)) x = ` · ×${f.q}`; }
+  if (d < 0) return `<span class="tag b">scaduto${x}</span>`;
+  if (d === 0) return `<span class="tag b">scade oggi${x}</span>`;
+  if (d <= SOON_DAYS) return `<span class="tag w">scade tra ${d} gg${x}</span>`;
+  return `<span class="tag">${fmtDate(e)}${x}</span>`;
+}
+const fmtDate = d => d ? d.split('-').reverse().slice(0,2).join('/') + '/' + d.slice(2,4) : '';
+const fmtDM = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+const isSoon = it => { const d = daysTo(expiry(it)); return d !== null && d <= SOON_DAYS && it.qty > 0; };
+// P1 "Da datare": solo prodotti con lotti già scritti nel foglio che contengono un lotto senza data
+const needsDate = it => isTracked(it) && parseLots(it.lotti).some(l => l.d === '' && l.q > 0);
+const isLow = it => it.scortaMin > 0 && it.qty < it.scortaMin;
+const inLista = it => isLow(it) || it.stato === 'comprare' || it.stato === 'preso'; // visibile in Spesa
+const inSpesa = it => inLista(it) && it.stato !== 'preso';                          // ancora da comprare
+const byId = id => items.find(i => i.id === id);
+const byCode = c => items.find(i => i.barcode && String(i.barcode) === String(c));
+
+// lot: solo per prodotti con scadenza attiva (carico nel lotto / consumo da quel lotto); changeQty.taken = lotti consumati
+function changeQty(id, delta, lot){
+  const it = byId(id); if (!it) return;
+  if (it.qty + delta < 0) return;
+  const tracked = isTracked(it); changeQty.taken = [];
+  if (tracked) { const r = applyDelta(it, delta, lot); Object.assign(it, r.item); changeQty.taken = r.taken; }
+  else it.qty += delta;
+  if (delta > 0) it.stato = '';
+  const op = {op:'delta', id, delta}; if (tracked && lot !== undefined) op.lot = lot;
+  if (delta < 0 && lp && lp.id === id) lotClose();
+  queue(op);
+  hl(id, delta);
+  return it;
+}
+/* ---- lotti: pannello Scadenza? (R1.9), lotto ereditato, spostamenti ---- */
+const isoDay = off => { const d = new Date(); d.setDate(d.getDate() + off); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+function rememberExp(id, d){
+  if (!d) return;
+  delete lastExp[id]; lastExp[id] = d;
+  const k = Object.keys(lastExp); k.slice(0, Math.max(0, k.length - LASTEXP_MAX)).forEach(x => delete lastExp[x]);
+  save(LS.lastExp, lastExp);
+}
+// sposta q unità da un lotto a un altro: ottimistico in locale + operazione lotMove (mai con gating spento)
+function moveLot(it, from, to, q){
+  if (!isTracked(it) || !(q > 0)) return;
+  const lots = moveUnits(effectiveLots(it), from, to, q);
+  it.lotti = serializeLots(lots); it.scadenza = nextExpiry(lots);
+  queue({op:'lotMove', id: it.id, from: isoOrEmpty(from), to: isoOrEmpty(to), q});
+}
+// + di una unità (scanner in modalità Carica, tasto + in lista o scheda). Prodotto con scadenza attiva: unità subito
+// registrata senza data, poi pannello; se c'è un lotto ereditato (stessa scelta, stesso prodotto, <90 s) va lì senza pannello.
+function plusOne(id){
+  const it = byId(id); if (!it) return;
+  if (inherit && inherit.id !== id) inherit = null;
+  if (lp && lp.id !== id) lotClose();
+  const tracked = isTracked(it);
+  if (tracked && inherit && Date.now() - inherit.at < INHERIT_MS) { changeQty(id, 1, inherit.d); plusOne.date = inherit.d; return it; }
+  changeQty(id, 1); plusOne.date = null;
+  if (tracked) lotPrompt(it);
+  return it;
+}
+function lotPrompt(it){
+  const host = $('#sheet-root').innerHTML ? 'bar' : (scanOpen ? 'panel' : 'bar');
+  if (lp && lp.id === it.id && lp.host === host) lp.n++;
+  else { lotClose(); lp = {id: it.id, n: 1, host, sheet: !!$('#sheet-root').innerHTML, t: 0}; }
+  lotRender(); lotTimer();
+}
+const lotHost = () => $(lp.host === 'panel' ? '#lotpanel' : '#lotbar');
+function lotRender(){
+  const it = byId(lp.id), lots = effectiveLots(it);
+  const same = lastExp[it.id] || lots.reduce((m, l) => (l.d > m ? l.d : m), '');
+  const b = (d, t) => `<button class="lp-b" data-lp data-d="${d}">${t}</button>`;
+  const el = lotHost();
+  el.innerHTML = `<div class="lp-h"><b>Scadenza?</b> ${esc(it.nome)} ×${lp.n}</div><div class="lp-r">`
+    + (same ? b(same, 'Stessa: ' + fmtDM(same)) : '')
+    + QUICK_DAYS.map(n => b(isoDay(n), `+${n} g`)).join('')
+    + `<label class="lp-b lp-pick">📅 Scegli<input type="date" class="lp-date"></label>` + b('', 'Senza data') + '</div>';
+  el.classList.remove('hidden');
+}
+// si chiude da solo dopo 8 s senza scansioni né tocchi: le unità restano senza data, nessuna scelta registrata
+function lotTimer(){
+  clearTimeout(lp.t);
+  lp.t = setTimeout(() => { if (!lp) return; if (pickerOpen) lotTimer(); else lotClose(); }, LP_MS);
+}
+function lotClose(){
+  if (!lp) return;
+  clearTimeout(lp.t); const el = lotHost(); el.innerHTML = ''; el.classList.add('hidden'); lp = null; pickerOpen = false;
+}
+// una sola operazione per scelta: lotMove con q = unità caricate da quando è comparso il pannello
+function lotChoose(d){
+  if (!lp) return;
+  const it = byId(lp.id), n = lp.n; lotClose();
+  if (!it || !isTracked(it)) return;
+  d = isoOrEmpty(d);
+  if (d) { moveLot(it, '', d, n); rememberExp(it.id, d); }
+  inherit = {id: it.id, d, at: Date.now()};
+  const t = `${it.nome} ×${n} · ${d ? 'scade ' + fmtDM(d) : 'senza data'}`;
+  if (scanOpen) scanMsg(t, 'in'); else toast(t);
+}
+[$('#lotpanel'), $('#lotbar')].forEach(h => {
+  const isDate = e => e.target.classList && e.target.classList.contains('lp-date');
+  h.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-lp]'); if (b) lotChoose(b.dataset.d); });
+  h.addEventListener('pointerdown', () => { if (lp) lotTimer(); });
+  h.addEventListener('focusin', e => { if (isDate(e)) pickerOpen = true; });
+  h.addEventListener('focusout', e => { if (isDate(e)) { pickerOpen = false; if (lp) lotTimer(); } });
+  h.addEventListener('change', e => { if (isDate(e)) { pickerOpen = false; lotChoose(e.target.value); } });
+});
+// R2.4: evidenzia per 300 ms la riga (e il numero) appena cambiata
+function hl(id, delta){
+  const c = delta > 0 ? 'pl-in' : 'pl-out';
+  document.querySelectorAll(`.row[data-id="${id}"]`).forEach(r => {
+    r.classList.remove('pl-in', 'pl-out'); void r.offsetWidth; r.classList.add(c);
+    setTimeout(() => r.classList.remove(c), 300);
+  });
+}
+// qtyDelta: la quantità di un prodotto esistente cambia solo per differenza (no sovrascritture tra telefoni)
+function upsert(it, qtyDelta){
+  const i = items.findIndex(x => x.id === it.id);
+  if (i >= 0) {
+    const old = items[i];
+    if (isTracked(it)) {   // scadenza attiva (categoria dopo l'operazione): lotti e scadenza derivati, mai presi dal form; delta 0 = tocco
+      const r = applyDelta(old, qtyDelta || 0).item;
+      it.qty = r.qty; it.lotti = r.lotti; it.scadenza = r.scadenza;
+    } else it.qty = Math.max(0, old.qty + (qtyDelta || 0));
+    it.stato = qtyDelta > 0 ? '' : (old.stato || '');
+    items[i] = it;
+    queue({op:'upsert', item: it, qtyDelta: qtyDelta || 0});
+  } else { it.stato = ''; items.push(it); queue({op:'upsert', item: it}); }
+}
+// R1.14: applica subito in locale e invia cfgSet (ultima scrittura vince); con gating spento non fa nulla
+function setCatScad(list){
+  if (!lotsEnabled()) return;
+  list = [...new Set(list.map(s => String(s).trim()).filter(Boolean))];
+  srv = Object.assign({}, srv, {config: Object.assign({}, srv.config, {catScad: list})}); save(LS.srv, srv);
+  queue({op:'cfgSet', key:'catScad', value: list});
+}
+function setStato(id, stato){ const it = byId(id); if (!it) return; it.stato = stato; queue({op:'stato', id, stato}); }
+function toggleSpesa(id){
+  const it = byId(id); if (!it) return;
+  if (inSpesa(it)) setStato(id, isLow(it) ? 'preso' : ''); else setStato(id, 'comprare');
+}
+function remove(id){
+  items = items.filter(i => i.id !== id);
+  queue({op:'delete', id});
+}
+
+/* ================= RENDER ================= */
+function thumb(it){
+  return `<div class="thumb">${it.img ? `<img src="${esc(it.img)}" loading="lazy" alt="">` : esc((it.nome||'?')[0].toUpperCase())}</div>`;
+}
+function row(it){
+  return `<div class="row ${it.qty <= 0 ? 'zero' : ''}" data-id="${it.id}">
+    ${thumb(it)}
+    <div class="info" data-open="${it.id}">
+      <div class="name">${esc(it.nome)}</div>
+      <div class="meta">${esc(it.posizione || '')}${it.marca ? ' · ' + esc(it.marca) : ''} ${expTag(it)} ${inSpesa(it) ? '<span class="tag w">da comprare</span>' : ''}</div>
+    </div>
+    <div class="qty">
+      <button class="qb" data-d="-1" data-id="${it.id}">−</button>
+      <span class="qv">${it.qty}</span>
+      <button class="qb" data-d="1" data-id="${it.id}">+</button>
+    </div>
+  </div>`;
+}
+function render(){
+  if (scanOpen) return;   // con lo scanner aperto la lista non si ridisegna: lo fa closeScanner()
+  const shopN = items.filter(inSpesa).length + extras.filter(x => x.stato !== 'preso').length;
+  $('#shopN').innerHTML = shopN ? `<span class="badge">${shopN}</span>` : '';
+  $('#hdr-inv').classList.toggle('hidden', tab !== 'inv');
+  $('#title').textContent = tab === 'inv' ? 'Dispensa' : 'Lista spesa';
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'inv') renderInv(); else renderShop();
+}
+function renderInv(){
+  const soonN = items.filter(isSoon).length;
+  const undN = items.filter(needsDate).length;
+  if (filter === 'undated' && !undN) filter = 'all';
+  const chips = [['all','Tutti', items.filter(i=>i.qty>0).length], ['soon','In scadenza', soonN], ['low','Da comprare', items.filter(inSpesa).length]]
+    .concat(undN ? [['undated','Da datare', undN]] : [])
+    .concat(positions().map(p => ['pos:' + p, p, items.filter(i => i.posizione === p && i.qty > 0).length]))
+    .concat([['zero','Esauriti', items.filter(i=>i.qty<=0).length]]);
+  $('#chips').innerHTML = chips.map(([k,l,n]) => `<button class="chip ${filter===k?'on':''}" data-f="${k}">${esc(l)}<span class="n">${n}</span></button>`).join('');
+
+  const q = query.toLowerCase();
+  let list = items.filter(it => !q || [it.nome, it.marca, it.categoria, it.posizione, it.barcode].join(' ').toLowerCase().includes(q));
+  if (filter === 'soon') list = list.filter(isSoon).sort((a,b) => expiry(a).localeCompare(expiry(b)));
+  else if (filter === 'undated') list = list.filter(needsDate);
+  else if (filter === 'low') list = list.filter(inSpesa);
+  else if (filter === 'zero') list = list.filter(i => i.qty <= 0);
+  else if (filter.startsWith('pos:')) list = list.filter(i => i.posizione === filter.slice(4));
+  if (filter !== 'soon') list.sort((a,b) => (b.qty>0) - (a.qty>0) || (a.categoria||'').localeCompare(b.categoria||'') || a.nome.localeCompare(b.nome));
+
+  if (!items.length) { $('#main').innerHTML = `<div class="empty">Dispensa vuota.<br><br>Tocca <b>▥</b> per scansionare il primo prodotto<br>o <b>＋</b> per aggiungerlo a mano.</div>`; return; }
+  if (!list.length) { $('#main').innerHTML = `<div class="empty">Nessun prodotto.</div>`; return; }
+
+  // raggruppa per categoria (tranne "in scadenza")
+  if (filter === 'soon' || q) { $('#main').innerHTML = list.map(row).join(''); return; }
+  let html = '', last = null;
+  for (const it of list) {
+    const g = it.qty > 0 ? (it.categoria || 'Altro') : 'Esauriti';
+    if (g !== last) { html += `<div class="sec">${esc(g)}</div>`; last = g; }
+    html += row(it);
+  }
+  $('#main').innerHTML = html;
+}
+function renderShop(){
+  const sortF = (a,b) => (a.categoria||'').localeCompare(b.categoria||'') || a.nome.localeCompare(b.nome);
+  const todoP = items.filter(inSpesa).sort(sortF), doneP = items.filter(i => inLista(i) && i.stato === 'preso').sort(sortF);
+  const todoX = extras.filter(x => x.stato !== 'preso'), doneX = extras.filter(x => x.stato === 'preso');
+  const pRow = (it, done) => `
+    <label class="list-chk ${done ? 'done' : ''}">
+      <input type="checkbox" data-tick="${it.id}" ${done ? 'checked' : ''}>
+      <div class="info"><div class="name">${esc(it.nome)}</div>
+      <div class="meta">${esc(it.marca||'')}${it.marca?' · ':''}${isLow(it) ? `ne hai ${it.qty}, servono ${it.scortaMin - it.qty}` : 'aggiunto a mano'}</div></div>
+    </label>`;
+  const xRow = (x, done) => `
+    <label class="list-chk ${done ? 'done' : ''}">
+      <input type="checkbox" data-xtick="${x.id}" ${done ? 'checked' : ''}>
+      <div class="info"><div class="name">${esc(x.nome)}</div><div class="meta">voce libera${x.utente ? ' · ' + esc(x.utente) : ''}</div></div>
+    </label>`;
+  let html = `<div style="display:flex;gap:8px;margin:4px 0 10px">
+      <input class="in" id="x-new" placeholder="Aggiungi voce libera (es. candele)" autocomplete="off">
+      <button class="btn" id="x-add" style="width:auto;margin:0;padding:0 18px">＋</button></div>`;
+  if (!todoP.length && !todoX.length && !doneP.length && !doneX.length) {
+    html += `<div class="empty">Niente da comprare 👌<br><br><span style="font-size:14px">Un prodotto finisce qui quando scende sotto la <b>scorta minima</b>, quando lo segni "da comprare" o quando lo chiedi ad Alexa.</span></div>`;
+  } else {
+    html += todoP.map(i => pRow(i, false)).join('') + todoX.map(x => xRow(x, false)).join('');
+    if (doneP.length || doneX.length) {
+      html += `<div class="sec">Nel carrello</div>` + doneP.map(i => pRow(i, true)).join('') + doneX.map(x => xRow(x, true)).join('');
+      html += `<p class="hint">I prodotti spuntati escono dalla lista quando li carichi con lo scanner.</p>`;
+    }
+    html += `<button class="btn" id="share">Condividi lista</button>`;
+    if (doneX.length) html += `<button class="btn sec2" id="x-clear">Rimuovi voci libere spuntate</button>`;
+  }
+  html += `<p class="hint" style="text-align:center;margin-top:12px">Al rientro dalla spesa: ▥ in modalità <b>+ Carica</b> e scansiona tutto.</p>`;
+  const old = $('#x-new'), keep = old ? old.value : '', foc = old && document.activeElement === old;
+  $('#main').innerHTML = html;
+  if (keep) $('#x-new').value = keep;
+  if (foc) $('#x-new').focus();
+}
+function addExtra(){
+  const inp = $('#x-new'); const nome = inp && inp.value.trim(); if (!nome) return;
+  inp.value = '';
+  const x = {id: 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2,5), nome, stato:'', utente: cfg.user};
+  extras.push(x); queue({op:'extraAdd', id: x.id, nome});
+  setTimeout(() => $('#x-new') && $('#x-new').focus(), 50);
+}
+
+/* ================= SHEETS (bottom) ================= */
+function openSheet(html, onMount){
+  const root = $('#sheet-root');
+  root.innerHTML = `<div class="ov"><div class="sheet"><div class="grab"></div>${html}</div></div>`;
+  const ov = root.firstChild;
+  ov.addEventListener('click', e => { if (e.target === ov) closeSheet(); });
+  onMount && onMount(ov);
+}
+function closeSheet(){ if (lp && lp.sheet) lotClose(); $('#sheet-root').innerHTML = ''; if (closeSheet.after) { const f = closeSheet.after; closeSheet.after = null; f(); } }
+
+function openDetail(id){
+  const it = byId(id); if (!it) return;
+  openSheet(`
+    <div class="det-top">${thumb(it)}
+      <div style="flex:1;min-width:0"><h2 style="margin:0;font-size:20px">${esc(it.nome)}</h2>
+      <div class="meta">${esc([it.marca, it.formato].filter(Boolean).join(' · '))}</div></div>
+    </div>
+    <div class="big">
+      <button class="qb" id="d-m">−</button><span class="qv" id="d-q">${it.qty}</span><button class="qb" id="d-p">+</button>
+    </div>
+    <div class="facts">
+      <div class="fact"><span>Posizione</span>${esc(it.posizione||'—')}</div>
+      <div class="fact" id="d-exp"><span>${isTracked(it) ? 'Prossima scadenza' : 'Scadenza'}</span>${expiry(it) ? fmtDate(expiry(it)) : '—'} ${expTag(it)}</div>
+      <div class="fact"><span>Scorta minima</span>${it.scortaMin || '—'}</div>
+      <div class="fact"><span>Categoria</span>${esc(it.categoria||'—')}</div>
+      ${it.note ? `<div class="fact" style="grid-column:1/-1"><span>Note</span>${esc(it.note)}</div>` : ''}
+      ${it.updatedBy ? `<div class="hint" style="grid-column:1/-1">Ultima modifica: ${esc(it.updatedBy)} ${it.updated ? '· ' + new Date(it.updated).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</div>` : ''}
+    </div>
+    ${isTracked(it) ? '<div class="sec" style="margin-top:14px">Lotti</div><div id="d-lots"></div>' : ''}
+    <button class="btn sec2" id="d-shop"></button>
+    <button class="btn sec2" id="d-edit">Modifica</button>
+    <button class="btn" id="d-ok">Fatto</button>`,
+  ov => {
+    const shopBtn = () => ov.querySelector('#d-shop').textContent = inSpesa(byId(id)) ? '✓ In lista spesa — togli' : '🛒 Metti in lista spesa';
+    // R1.11: una riga per lotto con data, quantità, cambio data (lotMove) e −/+ propri (delta con lot)
+    const lotsView = () => {
+      const box = ov.querySelector('#d-lots'); if (!box) return;
+      const lots = effectiveLots(byId(id));
+      box.innerHTML = (lots.length ? lots.map(l => `<div class="lot" data-d="${l.d}">
+          <span class="lot-d">${l.d ? fmtDate(l.d) : 'senza data'} ×${l.q}</span>
+          <label class="lot-ed" title="Cambia data">📅<input type="date" data-from="${l.d}" data-q="${l.q}"></label>
+          <button class="qb" data-ld="-1">−</button><button class="qb" data-ld="1">+</button></div>`).join('') : '<div class="hint">Nessun lotto</div>')
+        + `<button class="btn sec2" id="la-open">＋ Aggiungi lotto</button>
+        <div id="la" class="hidden"><div class="two"><div><label>Scadenza</label><input class="in" type="date" id="la-d"></div>
+        <div><label>Quantità</label><input class="in" type="number" inputmode="numeric" min="1" value="1" id="la-q"></div></div>
+        <button class="btn" id="la-ok">Aggiungi</button></div>`;
+    };
+    const upd = () => {
+      const it = byId(id), q = ov.querySelector('#d-q'); q.textContent = it.qty;
+      q.classList.remove('jump'); void q.offsetWidth; q.classList.add('jump'); shopBtn(); lotsView();
+      const ex = ov.querySelector('#d-exp'); if (ex) ex.innerHTML = `<span>${isTracked(it) ? 'Prossima scadenza' : 'Scadenza'}</span>${expiry(it) ? fmtDate(expiry(it)) : '—'} ${expTag(it)}`;
+    };
+    shopBtn(); lotsView();
+    const box = ov.querySelector('#d-lots');
+    if (box) {
+      box.addEventListener('click', e => {
+        const b = e.target.closest('[data-ld]'), lot = e.target.closest('.lot');
+        if (b && lot) { changeQty(id, +b.dataset.ld, lot.dataset.d); return upd(); }
+        if (e.target.closest('#la-open')) return ov.querySelector('#la').classList.toggle('hidden');
+        if (e.target.closest('#la-ok')) {
+          const q = Math.max(1, parseInt(ov.querySelector('#la-q').value) || 1);
+          changeQty(id, q, isoOrEmpty(ov.querySelector('#la-d').value)); upd();
+        }
+      });
+      box.addEventListener('change', e => {
+        const f = e.target.dataset && e.target.dataset.from;
+        if (f !== undefined) { moveLot(byId(id), f, isoOrEmpty(e.target.value), +e.target.dataset.q); upd(); }
+      });
+    }
+    ov.querySelector('#d-shop').onclick = () => { toggleSpesa(id); shopBtn(); };
+    ov.querySelector('#d-m').onclick = () => { changeQty(id, -1); upd(); };
+    ov.querySelector('#d-p').onclick = () => { plusOne(id); upd(); };
+    ov.querySelector('#d-edit').onclick = () => openForm(byId(id));
+    ov.querySelector('#d-ok').onclick = closeSheet;
+  });
+}
+
+function openForm(it, prefill){
+  const isNew = !it;
+  const origQty = it ? it.qty : 0;
+  it = it ? {...it} : {id: uid(), nome:'', marca:'', formato:'', categoria:'Altro', posizione: positions()[0], qty:1, scortaMin:1, scadenza:'', note:'', img:'', barcode:'', ...prefill};
+  const cats = DEF_CAT.includes(it.categoria) || !it.categoria ? DEF_CAT : [it.categoria, ...DEF_CAT];
+  const poss = positions().includes(it.posizione) || !it.posizione ? positions() : [...positions(), it.posizione];
+  const roExp = !isNew && isTracked(it);   // R1.12: prodotto esistente con scadenza attiva → riga di sola lettura
+  openSheet(`
+    <div class="sh-h">${it.img ? thumb(it) : ''}<h2>${isNew ? 'Nuovo prodotto' : 'Modifica'}</h2></div>
+    ${prefill?.offMsg ? `<p class="hint" style="margin-top:-4px">${esc(prefill.offMsg)}</p>` : ''}
+    <label>Nome *</label>
+    <input class="in" id="f-nome" value="${esc(it.nome)}" placeholder="es. Spaghetti n.5" autocomplete="off">
+    <div class="two">
+      <div><label>Quantità</label>
+        <div class="step"><button type="button" data-s="f-qty" data-d="-1">−</button><input id="f-qty" type="number" inputmode="numeric" min="0" value="${it.qty}"><button type="button" data-s="f-qty" data-d="1">+</button></div></div>
+      <div><label>Scorta minima</label>
+        <div class="step"><button type="button" data-s="f-min" data-d="-1">−</button><input id="f-min" type="number" inputmode="numeric" min="0" value="${it.scortaMin}"><button type="button" data-s="f-min" data-d="1">+</button></div></div>
+    </div>
+    <p class="hint">Sotto la scorta minima il prodotto va nella lista spesa (0 = mai).</p>
+    <label>Posizione</label>
+    <div class="chips" id="f-pos" style="padding-top:0">${poss.map(p => `<button type="button" class="chip ${p===it.posizione?'on':''}" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+    <div class="two">
+      <div><div id="f-scad-wrap" class="${roExp ? 'hidden' : ''}"><label>Scadenza</label><input class="in" id="f-scad" type="date" value="${esc(it.scadenza)}"></div>
+        ${isNew ? '' : `<div id="f-scad-ro" class="${roExp ? '' : 'hidden'}"><label>Prossima scadenza</label><div class="fact" style="margin:0">${expiry(it) ? fmtDate(expiry(it)) : '—'}, ${effectiveLots(it).length} ${effectiveLots(it).length === 1 ? 'lotto' : 'lotti'}</div><p class="hint">Gestisci i lotti nella scheda.</p></div>`}</div>
+      <div><label>Categoria</label><select class="in" id="f-cat">${cats.map(c => `<option ${c===it.categoria?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    </div>
+    <details ${it.marca || it.note ? 'open' : ''}><summary>Altri dettagli</summary>
+      <div class="two">
+        <div><label>Marca</label><input class="in" id="f-marca" value="${esc(it.marca)}"></div>
+        <div><label>Formato</label><input class="in" id="f-form" value="${esc(it.formato)}" placeholder="500 g"></div>
+      </div>
+      <label>Codice a barre</label><input class="in" id="f-bc" inputmode="numeric" value="${esc(it.barcode)}">
+      <label>Note</label><input class="in" id="f-note" value="${esc(it.note)}" placeholder="es. aperto, per la torta…">
+    </details>
+    <button class="btn" id="f-save">Salva</button>
+    ${isNew ? '' : '<button class="btn del" id="f-del">Elimina prodotto</button>'}`,
+  ov => {
+    let pos = it.posizione;
+    // cambiare categoria nel form non tocca i lotti: cambia solo se mostrare il campo Scadenza o la riga di sola lettura
+    const syncExp = () => {
+      const ro = !isNew && isTracked({categoria: ov.querySelector('#f-cat').value});
+      ov.querySelector('#f-scad-wrap').classList.toggle('hidden', ro); ov.querySelector('#f-scad-ro').classList.toggle('hidden', !ro);
+    };
+    if (!isNew) ov.querySelector('#f-cat').onchange = syncExp;
+    ov.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+      const inp = ov.querySelector('#' + b.dataset.s); inp.value = Math.max(0, (parseInt(inp.value)||0) + +b.dataset.d);
+    });
+    ov.querySelector('#f-pos').onclick = e => {
+      const b = e.target.closest('[data-p]'); if (!b) return;
+      pos = b.dataset.p; ov.querySelectorAll('#f-pos .chip').forEach(c => c.classList.toggle('on', c === b));
+    };
+    ov.querySelector('#f-save').onclick = () => {
+      const nome = ov.querySelector('#f-nome').value.trim();
+      if (!nome) { ov.querySelector('#f-nome').focus(); return toast('Serve almeno il nome'); }
+      const bc = ov.querySelector('#f-bc').value.trim();
+      const dup = bc && items.find(x => x.barcode === bc && x.id !== it.id);
+      if (dup) return toast(`Codice già usato da "${dup.nome}"`);
+      const out = {...it, nome, posizione: pos,
+        qty: Math.max(0, parseInt(ov.querySelector('#f-qty').value) || 0),
+        scortaMin: Math.max(0, parseInt(ov.querySelector('#f-min').value) || 0),
+        scadenza: !isNew && isTracked({categoria: ov.querySelector('#f-cat').value}) ? it.scadenza : (ov.querySelector('#f-scad').value || ''),
+        categoria: ov.querySelector('#f-cat').value,
+        marca: ov.querySelector('#f-marca').value.trim(),
+        formato: ov.querySelector('#f-form').value.trim(),
+        barcode: bc, note: ov.querySelector('#f-note').value.trim()};
+      delete out.offMsg; delete out.updated; delete out.updatedBy; delete out.stato;
+      upsert(out, isNew ? 0 : out.qty - origQty); closeSheet(); toast(isNew ? `Aggiunto: ${nome}` : 'Salvato');
+    };
+    const del = ov.querySelector('#f-del');
+    if (del) del.onclick = () => { if (confirm(`Eliminare "${it.nome}"?`)) { remove(it.id); closeSheet(); toast('Eliminato'); } };
+    // evidenzia i campi mancanti e porta il cursore sul primo
+    if (isNew) {
+      const miss = [['#f-nome', !it.nome], ['#f-scad', !it.scadenza]].filter(x => x[1]).map(x => ov.querySelector(x[0]));
+      miss.forEach(el => { el.classList.add('miss'); el.addEventListener('input', () => el.classList.remove('miss'), {once:true}); });
+      if (!it.nome) setTimeout(() => ov.querySelector('#f-nome').focus(), 250);
+    }
+  });
+}
+
+const REC_CAT = ['Latticini', 'Carne e pesce', 'Frutta e verdura'];
+// categorie di serie + personalizzate presenti nei prodotti + eventuali già attive (non si perdono al salvataggio)
+const catNames = () => [...new Set([...DEF_CAT, ...items.map(i => i.categoria).filter(Boolean), ...(srv.config.catScad || [])])];
+function openSettings(){
+  const shareLink = cfg.url ? location.origin + location.pathname + '#u=' + encodeURIComponent(cfg.url) + '&t=' + encodeURIComponent(cfg.token) : '';
+  openSheet(`
+    <div class="sh-h"><h2>Impostazioni</h2></div>
+    <label>Il tuo nome</label><input class="in" id="s-user" value="${esc(cfg.user)}">
+    <label>Posizioni (separate da virgola)</label><input class="in" id="s-pos" value="${esc(positions().join(', '))}">
+    <label>URL Apps Script</label><input class="in" id="s-url" value="${esc(cfg.url)}" placeholder="vuoto = solo locale">
+    <label>Token</label><input class="in" id="s-tok" value="${esc(cfg.token)}">
+    <button class="btn" id="s-save">Salva</button>
+    ${shareLink ? `<button class="btn sec2" id="s-share">Invia link di configurazione</button><p class="hint">Mandalo ad Alba: aprendolo, URL e token si compilano da soli.</p>` : ''}
+    ${lotsEnabled() ? `<div class="sec" style="margin-top:18px">Scadenze per categoria</div>
+    <p class="hint" style="margin:0 2px 8px">Attivo: ogni carico chiede la scadenza e il consumo parte dal lotto più vicino. Spento: scadenza unica facoltativa, come prima.</p>
+    ${catNames().map(c => `<label class="list-chk" style="margin:0 0 6px"><input type="checkbox" data-cat="${esc(c)}" ${srv.config.catScad.includes(c) ? 'checked' : ''}><div class="info"><div class="name">${esc(c)}</div></div></label>`).join('')}
+    <button class="btn sec2" id="s-rec">Attiva le tre categorie consigliate</button>` : ''}
+    <button class="btn sec2" id="s-csv">Esporta CSV</button>
+    <button class="btn sec2" id="s-sync">Sincronizza ora</button>
+    <p class="hint">App v${VERSION} · Backend v${esc(srv.version || '?')} · Prodotti: ${items.length} · In attesa di sync: ${pending.length}${syncErr ? ' · Errore: ' + esc(syncErr) : ''}</p>
+    ${srv.version && cmpVersion(srv.version, VERSION) !== 0 ? '<p class="hint" style="color:var(--warn)">Aggiornamento incompleto: pubblica la nuova versione del backend o riapri l\'app.</p>' : ''}`,
+  ov => {
+    ov.querySelector('#s-save').onclick = () => {
+      cfg.user = ov.querySelector('#s-user').value.trim() || cfg.user;
+      cfg.pos = ov.querySelector('#s-pos').value.split(',').map(s => s.trim()).filter(Boolean);
+      cfg.url = ov.querySelector('#s-url').value.trim();
+      cfg.token = ov.querySelector('#s-tok').value.trim();
+      save(LS.cfg, cfg); closeSheet(); render(); sync(); toast('Salvato');
+    };
+    const sh = ov.querySelector('#s-share');
+    if (sh) sh.onclick = () => shareText('Dispensa – link di configurazione', shareLink);
+    const boxes = () => [...ov.querySelectorAll('[data-cat]')];
+    boxes().forEach(cb => cb.onchange = () => setCatScad(boxes().filter(x => x.checked).map(x => x.dataset.cat)));
+    const rec = ov.querySelector('#s-rec');
+    if (rec) rec.onclick = () => {
+      boxes().forEach(x => { if (REC_CAT.includes(x.dataset.cat)) x.checked = true; });
+      setCatScad(boxes().filter(x => x.checked).map(x => x.dataset.cat)); toast('Attivate: ' + REC_CAT.join(', '));
+    };
+    ov.querySelector('#s-csv').onclick = exportCsv;
+    ov.querySelector('#s-sync').onclick = () => { closeSheet(); sync(); };
+  });
+}
+
+/* ================= SCANNER ================= */
+let qr = null, scanMode = load(LS.mode, 'out'), busy = false;
+const rd = {code: '', seenAt: 0, at: 0};   // stato anti-doppia-lettura: ultimo codice, ultima callback, ultima operazione
+
+// Doppia lettura (R2.2a): 'process' = opera; 'silent' = stesso codice ancora inquadrato; 'dup' = ripresentato
+// dopo >= 700 ms di assenza ed entro 2,5 s dall'ultima operazione.
+function decideRead(st, code, now){
+  const gap = now - st.seenAt, same = code === st.code;
+  st.code = code; st.seenAt = now;
+  if (same && gap < 700) return 'silent';
+  if (same && now - st.at < 2500) return 'dup';
+  st.at = now; return 'process';
+}
+function scanText(kind, nome, from, to, extra = ''){
+  if (kind === 'dup') return 'Già letto, attendi un attimo';
+  if (kind === 'warn') return `⚠︎ ${nome} · già a 0`;
+  return `${kind === 'in' ? '＋' : '−'} ${nome} · ${from} → ${to}${extra}`;
+}
+// Flash a schermo intero: la classe si toglie e si rimette (reflow) così riparte pulito a ogni lettura
+function flash(kind){
+  const el = $('#flash'); el.className = ''; void el.offsetWidth; el.className = 'go ' + kind;
+}
+
+function setMode(m){
+  scanMode = m; save(LS.mode, m);
+  document.querySelectorAll('#mode button').forEach(b => {
+    b.classList.toggle('on', b.dataset.m === m);
+    b.classList.toggle('out', b.dataset.m === 'out'); b.classList.toggle('inn', b.dataset.m === 'in');
+  });
+  scanMsg({out:'Ogni scansione toglie 1', in:'Ogni scansione aggiunge 1', ask:'Inquadra il codice a barre'}[m]);
+}
+function scanMsg(t, kind = ''){ const m = $('#scan-msg'); m.textContent = t; m.className = ('msg ' + kind).trim(); }
+
+async function openScanner(){
+  scanOpen = true; rd.code = ''; updateSync();
+  $('#scan').classList.remove('hidden'); setMode(scanMode); busy = false;
+  if (typeof Html5Qrcode === 'undefined') { scanMsg('Scanner non caricato (offline?). Digita il codice.'); return; }
+  try {
+    const F = Html5QrcodeSupportedFormats;
+    qr = new Html5Qrcode('reader', {verbose:false,
+      formatsToSupport:[F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.QR_CODE],
+      experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
+    const w = Math.min(window.innerWidth * .8, 320);
+    await qr.start({facingMode:'environment'}, {fps:12, qrbox:{width:w, height:w*.5}, aspectRatio: window.innerHeight / window.innerWidth}, onCode, () => {});
+  } catch(e) {
+    scanMsg('Fotocamera non disponibile: ' + (e.message || e) + ' — digita il codice.');
+  }
+}
+async function closeScanner(){
+  try { if (qr && qr.isScanning) await qr.stop(); qr && qr.clear(); } catch(e){}
+  qr = null; $('#scan').classList.add('hidden');
+  if (lp && lp.host === 'panel') lotClose();
+  scanOpen = false; render();
+}
+function pauseScan(){ try { qr && qr.isScanning && qr.pause(true); } catch(e){} }
+function resumeScan(){ busy = false; try { qr && qr.resume(); } catch(e){} }
+
+function beep(ok = true){
+  try {
+    const a = beep.ctx || (beep.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = ok ? 1200 : 300; g.gain.value = .08;
+    o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (ok ? .08 : .2));
+  } catch(e){}
+  navigator.vibrate && navigator.vibrate(ok ? 40 : [60,40,60]);
+}
+
+async function onCode(code){
+  code = String(code).trim();
+  if (!code || busy || pickerOpen) return;   // mentre il selettore data nativo è aperto le letture si ignorano
+  const read = decideRead(rd, code, Date.now());
+  if (read === 'silent') return;
+  // conferma visiva prima di qualsiasi await (≤ 50 ms)
+  if (read === 'dup') { flash('dup'); beep(false); scanMsg(scanText('dup'), 'dup'); return; }
+  const it = byCode(code);
+
+  if (it && scanMode !== 'ask') {
+    const d = scanMode === 'in' ? 1 : -1, kind = d > 0 ? 'in' : 'out', from = it.qty;
+    if (d < 0 && from <= 0) { flash('warn'); beep(false); scanMsg(scanText('warn', it.nome), 'warn'); return; }
+    flash(kind);
+    if (d > 0) { plusOne(it.id); beep(); scanMsg(scanText(kind, it.nome, from, it.qty, plusOne.date === null ? '' : plusOne.date ? ` · scade ${fmtDM(plusOne.date)}` : ' · senza data'), kind); return; }
+    if (inherit && inherit.id !== it.id) inherit = null;
+    const tr = isTracked(it); changeQty(it.id, d); beep();
+    let x = '';
+    if (tr) {   // R1.10: data del lotto consumato e, se diverso, il prossimo
+      const t = changeQty.taken[0], nx = sorted(effectiveLots(it))[0];
+      if (t) x += t.d ? ` · scade ${fmtDM(t.d)}` : ' · senza data';
+      if (nx && nx.d && (!t || nx.d !== t.d)) x += ` · poi ${fmtDM(nx.d)}`;
+    }
+    scanMsg(scanText(kind, it.nome, from, it.qty, x + (inSpesa(it) ? ' · in lista spesa' : '')), kind);
+    return;
+  }
+
+  lotClose(); busy = true; pauseScan(); beep();
+  if (it) { closeSheet.after = resumeScan; openDetail(it.id); return; }
+
+  // prodotto nuovo → Open Food Facts
+  scanMsg('Nuovo codice, cerco il prodotto…');
+  const pre = await offLookup(code);
+  pre.barcode = code;
+  pre.qty = scanMode === 'out' ? 0 : 1;
+  closeSheet.after = resumeScan;
+  openForm(null, pre);
+}
+
+async function offLookup(code){
+  const base = {offMsg: 'Prodotto non trovato su Open Food Facts: inseriscilo una volta, poi verrà riconosciuto.'};
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name_it,product_name,generic_name_it,brands,quantity,image_front_small_url,categories_tags`, {signal: ctl.signal});
+    clearTimeout(t);
+    const j = await r.json();
+    if (j.status !== 1 || !j.product) return base;
+    const p = j.product;
+    const nome = (p.product_name_it || p.product_name || p.generic_name_it || '').trim();
+    const tags = (p.categories_tags || []).join(' ');
+    const cat = guessCat(tags);
+    return {nome, marca: (p.brands || '').split(',')[0].trim(), formato: (p.quantity || '').trim(),
+      img: p.image_front_small_url || '', categoria: cat, posizione: guessPos(tags, cat),
+      offMsg: nome ? 'Dati da Open Food Facts: controlla e completa.' : base.offMsg};
+  } catch(e) { return {offMsg: 'Ricerca online non riuscita: inserisci i dati a mano.'}; }
+}
+function guessCat(t){
+  const m = [
+    [/frozen|surgel/, 'Surgelati'], [/baby|infant/, 'Bimbi'],
+    [/pasta|rice|riz|cereal-grains|flours|legumes/, 'Pasta e riso'],
+    [/sauces|condiment|oils|vinegar|spices|salts/, 'Sughi e condimenti'],
+    [/breakfast|biscuit|cookies|rusks|jams|spreads|honey|coffee|teas/, 'Colazione'],
+    [/snack|chocolate|sweets|candies|confection|chips|crisps|desserts/, 'Snack e dolci'],
+    [/beverage|drinks|waters|juices|wines|beers|sodas/, 'Bevande'],
+    [/dair|cheese|yogurt|milk|butter|cream/, 'Latticini'],
+    [/meat|fish|seafood|sausage|ham|tuna/, 'Carne e pesce'],
+    [/canned|preserves|conserve/, 'Conserve'],
+    [/fruit|vegetable|plant-based-foods(?!-and)/, 'Frutta e verdura'],
+  ];
+  for (const [re, c] of m) if (re.test(t)) return c;
+  return 'Altro';
+}
+function guessPos(t, cat){
+  const p = positions();
+  if (cat === 'Surgelati' && p.includes('Freezer')) return 'Freezer';
+  if (/fresh|yogurt|cheeses|milk(?!-powder)|butter|cream|ham|sausage/.test(t) && !/uht|long-life|canned/.test(t) && p.includes('Frigo')) return 'Frigo';
+  return p[0];
+}
+
+/* ================= UTIL ================= */
+function toast(t){
+  const el = $('#toast'); el.textContent = t; el.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+async function shareText(title, text){
+  if (navigator.share) { try { await navigator.share({title, text}); return; } catch(e){ if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast('Copiato negli appunti'); } catch(e){ prompt('Copia:', text); }
+}
+function exportCsv(){
+  const cols = ['nome','marca','formato','categoria','posizione','qty','scortaMin','scadenza','barcode','note','lotti'];
+  const csv = [cols.join(';')].concat(items.map(i => cols.map(c => `"${String(i[c] ?? '').replace(/"/g,'""')}"`).join(';'))).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv'}));
+  a.download = 'dispensa-' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+}
+
+/* ================= EVENTI ================= */
+function start(){
+  $('#setup').classList.add('hidden'); $('#app').classList.remove('hidden');
+  if (!cfg.pos) cfg.pos = DEF_POS;
+  render(); sync();
+}
+document.addEventListener('click', e => {
+  const t = e.target;
+  const qb = t.closest('.row .qb');
+  if (qb) { const it = +qb.dataset.d > 0 ? plusOne(qb.dataset.id) : changeQty(qb.dataset.id, +qb.dataset.d); if (it && inSpesa(it) && +qb.dataset.d < 0 && it.qty === it.scortaMin - 1) toast(`${it.nome} → lista spesa`); return; }
+  const op = t.closest('[data-open]'); if (op) return openDetail(op.dataset.open);
+  const th = t.closest('.row .thumb'); if (th) return openDetail(th.parentElement.dataset.id);
+  const ch = t.closest('#chips .chip'); if (ch) { filter = ch.dataset.f; render(); window.scrollTo(0,0); return; }
+  const tb = t.closest('.tab'); if (tb) { tab = tb.dataset.tab; render(); window.scrollTo(0,0); return; }
+  if (t.closest('#share')) {
+    const righe = items.filter(inSpesa).map(i => `• ${i.nome}${i.marca ? ' (' + i.marca + ')' : ''}${isLow(i) ? ' ×' + (i.scortaMin - i.qty) : ''}`)
+      .concat(extras.filter(x => x.stato !== 'preso').map(x => `• ${x.nome}`));
+    return shareText('Lista spesa', '🛒 Lista spesa\n' + righe.join('\n'));
+  }
+  if (t.closest('#x-add')) return addExtra();
+  if (t.closest('#x-clear')) {
+    const ids = extras.filter(x => x.stato === 'preso').map(x => x.id);
+    extras = extras.filter(x => x.stato !== 'preso'); queue({op:'extraDel', id: ids}); return;
+  }
+});
+document.addEventListener('change', e => {
+  const tk = e.target.dataset?.tick, xt = e.target.dataset?.xtick;
+  if (tk) { const it = byId(tk); setStato(tk, e.target.checked ? 'preso' : (isLow(it) ? '' : 'comprare')); }
+  if (xt) { const x = extras.find(x => x.id === xt); if (x) { x.stato = e.target.checked ? 'preso' : ''; queue({op:'extraSet', id: xt, stato: x.stato}); } }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'x-new') addExtra(); });
+$('#q').addEventListener('input', e => { query = e.target.value.trim(); renderInv(); });
+$('#b-scan').onclick = openScanner;
+$('#b-add').onclick = () => openForm(null);
+$('#b-set').onclick = openSettings;
+$('#scan-x').onclick = closeScanner;
+$('#mode').onclick = e => { const b = e.target.closest('[data-m]'); if (b) setMode(b.dataset.m); };
+$('#scan-go').onclick = () => { const v = $('#scan-man').value.trim(); if (v) { $('#scan-man').value = ''; rd.code = ''; onCode(v); } };
+$('#scan-man').addEventListener('keydown', e => { if (e.key === 'Enter') $('#scan-go').click(); });
+// il form aperto dallo scanner deve stare sopra lo scanner
+new MutationObserver(() => { $('#sheet-root').style.cssText = $('#sheet-root').innerHTML ? 'position:relative;z-index:40' : ''; })
+  .observe($('#sheet-root'), {childList:true});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg) sync(); });
+window.addEventListener('online', () => { updateSync(); cfg && sync(); });
+window.addEventListener('offline', updateSync);
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (cfg) start(); else initSetup();
+</script>
+</body>
+</html>
